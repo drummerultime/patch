@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestionnaire de Patch</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Arial', sans-serif;
+        }
+
+        body {
+            background-color: #f5f5f5;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        h1, h2 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .patch-section {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
+            overflow-x: auto;
+        }
+
+        .patch-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .patch-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+
+        .patch-table th,
+        .patch-table td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+
+        .patch-table th {
+            background-color: #f8f8f8;
+            font-weight: bold;
+        }
+
+        .patch-table tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+
+        .patch-table input {
+            width: 100%;
+            padding: 4px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+
+        .save-btn {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-top: 10px;
+        }
+
+        .save-btn:hover {
+            background-color: #45a049;
+        }
+
+        .tab-buttons {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+
+        .tab-btn {
+            padding: 10px 20px;
+            margin: 0 10px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            background-color: #ddd;
+        }
+
+        .tab-btn.active {
+            background-color: #4CAF50;
+            color: white;
+        }
+
+        .source-management {
+            padding: 20px;
+        }
+
+        .source-input {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .source-input input {
+            flex: 1;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+
+        .source-list ul {
+            list-style: none;
+            padding: 0;
+        }
+
+        .source-list li {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px;
+            border: 1px solid #ddd;
+            margin-bottom: 4px;
+            border-radius: 4px;
+        }
+
+        .source-list li button {
+            background-color: #ff4444;
+            color: white;
+            border: none;
+            padding: 4px 8px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .source-select {
+            width: 100%;
+            padding: 4px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Gestionnaire de Patch</h1>
+        
+        <div class="tab-buttons">
+            <button class="tab-btn active" onclick="switchView('inputs')">Entrées</button>
+            <button class="tab-btn" onclick="switchView('outputs')">Sorties</button>
+            <button class="tab-btn" onclick="switchView('sources')">Types de Sources</button>
+        </div>
+
+        <div id="inputsView" class="patch-section">
+            <h2>Entrées des Patchs</h2>
+            <div class="patch-grid">
+                <div class="patch-column">
+                    <h3>Patch 1 (24 entrées)</h3>
+                    <table class="patch-table">
+                        <thead>
+                            <tr>
+                                <th>Entrée</th>
+                                <th>Source</th>
+                                <th>Notes</th>
+                            </tr>
+                        </thead>
+                        <tbody id="patch1Inputs"></tbody>
+                    </table>
+                </div>
+                <div class="patch-column">
+                    <h3>Patch 2 (32 entrées)</h3>
+                    <table class="patch-table">
+                        <thead>
+                            <tr>
+                                <th>Entrée</th>
+                                <th>Source</th>
+                                <th>Notes</th>
+                            </tr>
+                        </thead>
+                        <tbody id="patch2Inputs"></tbody>
+                    </table>
+                </div>
+            </div>
+            <button class="save-btn" onclick="savePatches()">Sauvegarder</button>
+        </div>
+
+        <div id="sourcesView" class="patch-section" style="display: none;">
+            <h2>Gestion des Types de Sources</h2>
+            <div class="source-management">
+                <div class="source-input">
+                    <input type="text" id="newSourceType" placeholder="Nouveau type de source">
+                    <button class="save-btn" onclick="addSourceType()">Ajouter</button>
+                </div>
+                <div class="source-list">
+                    <h3>Types de Sources Existants</h3>
+                    <ul id="sourceTypesList"></ul>
+                </div>
+            </div>
+        </div>
+
+        <div id="outputsView" class="patch-section" style="display: none;">
+            <h2>Sorties des Patchs</h2>
+            <div class="patch-grid">
+                <div class="patch-column">
+                    <h3>Patch 1 (8 sorties)</h3>
+                    <table class="patch-table">
+                        <thead>
+                            <tr>
+                                <th>Sortie</th>
+                                <th>Destination</th>
+                                <th>Notes</th>
+                            </tr>
+                        </thead>
+                        <tbody id="patch1Outputs"></tbody>
+                    </table>
+                </div>
+                <div class="patch-column">
+                    <h3>Patch 2 (16 sorties)</h3>
+                    <table class="patch-table">
+                        <thead>
+                            <tr>
+                                <th>Sortie</th>
+                                <th>Destination</th>
+                                <th>Notes</th>
+                            </tr>
+                        </thead>
+                        <tbody id="patch2Outputs"></tbody>
+                    </table>
+                </div>
+            </div>
+            <button class="save-btn" onclick="savePatches()">Sauvegarder</button>
+        </div>
+    </div>
+
+    <script>
+        class PatchManager {
+            constructor() {
+                this.patch1 = JSON.parse(localStorage.getItem('patch1')) || this.initializePatch(24, 8);
+                this.patch2 = JSON.parse(localStorage.getItem('patch2')) || this.initializePatch(32, 16);
+                this.sourceTypes = JSON.parse(localStorage.getItem('sourceTypes')) || [
+                    'Micro SM58',
+                    'Micro Beta 52',
+                    'DI Active',
+                    'DI Passive',
+                    'Micro SM57'
+                ];
+                this.currentView = 'inputs';
+                this.renderAll();
+            }
+
+            initializePatch(inputs, outputs) {
+                const patch = {
+                    inputs: [],
+                    outputs: []
+                };
+                const defaultDestinations = {
+                    1: 'Retour Gauche',
+                    2: 'Retour Centre',
+                    3: 'Retour Droit',
+                    4: 'Retour Batteur',
+                    13: 'Sub L',
+                    14: 'Sub R',
+                    15: 'Main L',
+                    16: 'Main R'
+                };
+                
+                for (let i = 1; i <= inputs; i++) {
+                    patch.inputs.push({
+                        number: i,
+                        source: '',
+                        notes: ''
+                    });
+                }
+                
+                for (let i = 1; i <= outputs; i++) {
+                    patch.outputs.push({
+                        number: i,
+                        destination: defaultDestinations[i] || '',
+                        notes: ''
+                    });
+                }
+                return patch;
+            }
+
+            savePatches() {
+                // Save inputs
+                ['1', '2'].forEach(patchNum => {
+                    const patch = patchNum === '1' ? this.patch1 : this.patch2;
+                    const tbody = document.getElementById(`patch${patchNum}Inputs`);
+                    const rows = tbody.getElementsByTagName('tr');
+
+                    for (let i = 0; i < rows.length; i++) {
+                        const select = rows[i].querySelector('select');
+                        const input = rows[i].querySelector('input');
+                        patch.inputs[i].source = select.value;
+                        patch.inputs[i].notes = input.value;
+                    }
+                });
+
+                // Save outputs
+                ['1', '2'].forEach(patchNum => {
+                    const patch = patchNum === '1' ? this.patch1 : this.patch2;
+                    const tbody = document.getElementById(`patch${patchNum}Outputs`);
+                    const rows = tbody.getElementsByTagName('tr');
+
+                    for (let i = 0; i < rows.length; i++) {
+                        const inputs = rows[i].getElementsByTagName('input');
+                        patch.outputs[i].destination = inputs[0].value;
+                        patch.outputs[i].notes = inputs[1].value;
+                    }
+                });
+
+                localStorage.setItem('patch1', JSON.stringify(this.patch1));
+                localStorage.setItem('patch2', JSON.stringify(this.patch2));
+                alert('Patches sauvegardés!');
+            }
+
+            renderInputs() {
+                ['1', '2'].forEach(patchNum => {
+                    const patch = patchNum === '1' ? this.patch1 : this.patch2;
+                    const tbody = document.getElementById(`patch${patchNum}Inputs`);
+                    tbody.innerHTML = patch.inputs.map(input => `
+                        <tr>
+                            <td>${input.number}</td>
+                            <td>
+                <select class="source-select">
+                    <option value="" ${input.source === '' ? 'selected' : ''}>Sélectionner une source</option>
+                    ${this.getSourceTypeOptions(input.source)}
+                </select>
+            </td>
+                            <td><input type="text" value="${input.notes}"></td>
+                        </tr>
+                    `).join('');
+                });
+            }
+
+            renderOutputs() {
+                ['1', '2'].forEach(patchNum => {
+                    const patch = patchNum === '1' ? this.patch1 : this.patch2;
+                    const tbody = document.getElementById(`patch${patchNum}Outputs`);
+                    tbody.innerHTML = patch.outputs.map(output => `
+                        <tr>
+                            <td>${output.number}</td>
+                            <td><input type="text" value="${output.destination}"></td>
+                            <td><input type="text" value="${output.notes}"></td>
+                        </tr>
+                    `).join('');
+                });
+            }
+
+            getSourceTypeOptions(selectedValue) {
+                return this.sourceTypes
+                    .map(type => `<option value="${type}" ${selectedValue === type ? 'selected' : ''}>${type}</option>`)
+                    .join('');
+            }
+
+            renderSourceTypes() {
+                const list = document.getElementById('sourceTypesList');
+                list.innerHTML = this.sourceTypes
+                    .map(type => `
+                        <li>
+                            ${type}
+                            <button onclick="patchManager.deleteSourceType('${type}')">Supprimer</button>
+                        </li>
+                    `)
+                    .join('');
+            }
+
+            addSourceType(type) {
+                if (type && !this.sourceTypes.includes(type)) {
+                    this.sourceTypes.push(type);
+                    localStorage.setItem('sourceTypes', JSON.stringify(this.sourceTypes));
+                    this.renderSourceTypes();
+                    this.renderInputs();
+                }
+            }
+
+            deleteSourceType(type) {
+                this.sourceTypes = this.sourceTypes.filter(t => t !== type);
+                localStorage.setItem('sourceTypes', JSON.stringify(this.sourceTypes));
+                this.renderSourceTypes();
+                this.renderInputs();
+            }
+
+            renderAll() {
+                this.renderInputs();
+                this.renderOutputs();
+                this.renderSourceTypes();
+            }
+        }
+
+        const patchManager = new PatchManager();
+
+        function switchView(view) {
+            document.getElementById('inputsView').style.display = view === 'inputs' ? 'block' : 'none';
+            document.getElementById('outputsView').style.display = view === 'outputs' ? 'block' : 'none';
+            document.getElementById('sourcesView').style.display = view === 'sources' ? 'block' : 'none';
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.textContent.toLowerCase().includes(view));
+            });
+        }
+
+        function savePatches() {
+            patchManager.savePatches();
+        }
+
+        function addSourceType() {
+            const input = document.getElementById('newSourceType');
+            const value = input.value.trim();
+            if (value) {
+                patchManager.addSourceType(value);
+                input.value = '';
+            }
+        }
+    </script>
+</body>
+</html>
