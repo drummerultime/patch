@@ -200,6 +200,7 @@
                 </div>
             </div>
             <button class="save-btn" onclick="savePatches()">Sauvegarder</button>
+            <button class="save-btn" style="margin-left: 10px; background-color: #2196F3;" onclick="exportToPDF()">Exporter en PDF</button>
         </div>
 
         <div id="sourcesView" class="patch-section" style="display: none;">
@@ -247,10 +248,89 @@
                 </div>
             </div>
             <button class="save-btn" onclick="savePatches()">Sauvegarder</button>
+            <button class="save-btn" style="margin-left: 10px; background-color: #2196F3;" onclick="exportToPDF()">Exporter en PDF</button>
         </div>
     </div>
 
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
     <script>
+        function exportToPDF() {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            const pageWidth = doc.internal.pageSize.width;
+            const margin = 10;
+            
+            function getTableData(patch, type) {
+                return patch[type].map(item => {
+                    if (type === 'inputs') {
+                        return [item.number, item.source, item.notes];
+                    } else {
+                        return [item.number, item.destination, item.notes];
+                    }
+                });
+            }
+
+            // Page 1: Inputs
+            doc.setFontSize(20);
+            doc.text('Gestionnaire de Patch - Entrées', pageWidth / 2, 15, { align: 'center' });
+            
+            const patch1Inputs = getTableData(patchManager.patch1, 'inputs');
+            const patch2Inputs = getTableData(patchManager.patch2, 'inputs');
+            
+            doc.autoTable({
+                startY: 25,
+                head: [['Entrée P1', 'Source P1', 'Notes P1', 'Entrée P2', 'Source P2', 'Notes P2']],
+                body: Array.from({ length: Math.max(patch1Inputs.length, patch2Inputs.length) }, (_, index) => {
+                    const row1 = patch1Inputs[index] || ['', '', ''];
+                    const row2 = patch2Inputs[index] || ['', '', ''];
+                    return [...row1, ...row2];
+                }),
+                margin: { left: margin, right: margin },
+                theme: 'grid',
+                styles: { fontSize: 8, cellPadding: 2 },
+                columnStyles: {
+                    0: { cellWidth: 25 },
+                    1: { cellWidth: 35 },
+                    2: { cellWidth: 35 },
+                    3: { cellWidth: 25 },
+                    4: { cellWidth: 35 },
+                    5: { cellWidth: 35 }
+                }
+            });
+
+            // Page 2: Outputs
+            doc.addPage();
+            doc.setFontSize(20);
+            doc.text('Gestionnaire de Patch - Sorties', pageWidth / 2, 15, { align: 'center' });
+            
+            const patch1Outputs = getTableData(patchManager.patch1, 'outputs');
+            const patch2Outputs = getTableData(patchManager.patch2, 'outputs');
+            
+            doc.autoTable({
+                startY: 25,
+                head: [['Sortie P1', 'Destination P1', 'Notes P1', 'Sortie P2', 'Destination P2', 'Notes P2']],
+                body: Array.from({ length: Math.max(patch1Outputs.length, patch2Outputs.length) }, (_, index) => {
+                    const row1 = patch1Outputs[index] || ['', '', ''];
+                    const row2 = patch2Outputs[index] || ['', '', ''];
+                    return [...row1, ...row2];
+                }),
+                margin: { left: margin, right: margin },
+                theme: 'grid',
+                styles: { fontSize: 8, cellPadding: 2 },
+                columnStyles: {
+                    0: { cellWidth: 25 },
+                    1: { cellWidth: 35 },
+                    2: { cellWidth: 35 },
+                    3: { cellWidth: 25 },
+                    4: { cellWidth: 35 },
+                    5: { cellWidth: 35 }
+                }
+            });
+            
+            doc.save('configuration_patch.pdf');
+        }
+        
         class PatchManager {
             constructor() {
                 this.patch1 = JSON.parse(localStorage.getItem('patch1')) || this.initializePatch(24, 8);
@@ -341,11 +421,11 @@
                         <tr>
                             <td>${input.number}</td>
                             <td>
-                <select class="source-select">
-                    <option value="" ${input.source === '' ? 'selected' : ''}>Sélectionner une source</option>
-                    ${this.getSourceTypeOptions(input.source)}
-                </select>
-            </td>
+                                <select class="source-select">
+                                    <option value="" ${input.source === '' ? 'selected' : ''}>Sélectionner une source</option>
+                                    ${this.getSourceTypeOptions(input.source)}
+                                </select>
+                            </td>
                             <td><input type="text" value="${input.notes}"></td>
                         </tr>
                     `).join('');
@@ -407,26 +487,66 @@
             }
         }
 
-        const patchManager = new PatchManager();
+        document.addEventListener('DOMContentLoaded', function() {
+            window.patchManager = new PatchManager();
+
+            // Update tab switching functionality
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const view = this.textContent.toLowerCase().trim();
+                    const viewMap = {
+                        'entrées': 'inputs',
+                        'sorties': 'outputs',
+                        'types de sources': 'sources'
+                    };
+                    switchView(viewMap[view]);
+                });
+            });
+
+            // Bind save functionality
+            document.querySelectorAll('.save-btn').forEach(btn => {
+                if (btn.textContent === 'Sauvegarder') {
+                    btn.addEventListener('click', () => patchManager.savePatches());
+                }
+            });
+
+            // Bind source type input
+            document.getElementById('newSourceType').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    addSourceType();
+                }
+            });
+        });
 
         function switchView(view) {
-            document.getElementById('inputsView').style.display = view === 'inputs' ? 'block' : 'none';
-            document.getElementById('outputsView').style.display = view === 'outputs' ? 'block' : 'none';
-            document.getElementById('sourcesView').style.display = view === 'sources' ? 'block' : 'none';
-            document.querySelectorAll('.tab-btn').forEach(btn => {
-                btn.classList.toggle('active', btn.textContent.toLowerCase().includes(view));
-            });
-        }
+            // Hide all views
+            document.getElementById('inputsView').style.display = 'none';
+            document.getElementById('outputsView').style.display = 'none';
+            document.getElementById('sourcesView').style.display = 'none';
 
-        function savePatches() {
-            patchManager.savePatches();
+            // Show selected view
+            document.getElementById(`${view}View`).style.display = 'block';
+
+            // Update active button state
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('active');
+                const btnView = btn.textContent.toLowerCase().trim();
+                const viewMap = {
+                    'entrées': 'inputs',
+                    'sorties': 'outputs',
+                    'types de sources': 'sources'
+                };
+                if (viewMap[btnView] === view) {
+                    btn.classList.add('active');
+                }
+            });
         }
 
         function addSourceType() {
             const input = document.getElementById('newSourceType');
-            const value = input.value.trim();
-            if (value) {
-                patchManager.addSourceType(value);
+            const type = input.value.trim();
+            if (type) {
+                patchManager.addSourceType(type);
                 input.value = '';
             }
         }
